@@ -17,19 +17,22 @@ let client: LanguageClient;
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	const serverModule = context.asAbsolutePath(
+	const releaseServerModule = context.asAbsolutePath(
 		path.join('minimal-lsp', 'target', 'release', 'minimal-lsp.exe')
 	);
 
+	const debugServerModule = context.asAbsolutePath(
+		path.join('minimal-lsp', 'target', 'debug', 'minimal-lsp.exe')
+	);
 		// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
 	const serverOptions: ServerOptions = {
 		run: { 
-			command: serverModule,
+			command: releaseServerModule,
 			args: ['--stdio'],
 		},
 		debug: {
-			command: serverModule,
+			command: debugServerModule,
 			args: ['--stdio', '--debug'],
 		}
 	};
@@ -57,4 +60,9 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate(): Thenable<void> | undefined {
+	if (!client) {
+		return undefined;
+	}
+	return client.stop();
+}

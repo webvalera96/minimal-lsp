@@ -1,0 +1,17 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build the minimal-lsp Rust binary
+    cmds:
+      - cargo build
+
+  build-release:
+    desc: Build the minimal-lsp Rust binary in release mode
+    cmds:
+      - cargo build --release
+
+  clean:
+    desc: Clean the minimal-lsp build artifacts
+    cmds:
+      - cargo clean

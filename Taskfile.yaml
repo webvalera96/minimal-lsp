@@ -1,0 +1,6 @@
+version: "3"
+
+includes:
+  lsp:
+    dir: minimal-lsp
+    taskfile: ./minimal-lsp/Taskfile.yaml

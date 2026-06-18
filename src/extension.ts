@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import { workspace, ExtensionContext, window as Window } from 'vscode';
 
 import {
 	LanguageClient,
@@ -18,11 +18,11 @@ let client: LanguageClient;
 export function activate(context: vscode.ExtensionContext) {
 
 	const releaseServerModule = context.asAbsolutePath(
-		path.join('minimal-lsp', 'target', 'release', 'minimal-lsp.exe')
+		path.join('minimal-lsp', 'target', 'release', 'minimal-lsp')
 	);
 
 	const debugServerModule = context.asAbsolutePath(
-		path.join('minimal-lsp', 'target', 'debug', 'minimal-lsp.exe')
+		path.join('minimal-lsp', 'target', 'debug', 'minimal-lsp')
 	);
 		// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
@@ -48,14 +48,20 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	// Create the language client and start the client.
-	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
-		serverOptions,
-		clientOptions
-	);
 
 	// Start the client. This will also launch the server
+	try {
+		client = new LanguageClient(
+			'minmalLSP',
+			'Minimal LSP Example',
+			serverOptions,
+			clientOptions,
+			true,
+		);
+	} catch {
+		Window.showErrorMessage(`The extension couldn't be started. See the output channel for details.`);
+		return;
+	}
 	client.start();
 }
 

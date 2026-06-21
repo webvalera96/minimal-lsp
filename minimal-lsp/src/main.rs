@@ -6,7 +6,8 @@ use std::net::{IpAddr, SocketAddr, Ipv4Addr};
 
 use crossbeam_channel::{SendError};
 use lsp_server::{Connection, Message, Request as ServerRequest};
-use lsp_types::notification::Notification as _;
+use lsp_types::DidCloseTextDocumentParams;
+use lsp_types::notification::{DidCloseTextDocument, Notification as _};
 use lsp_types::{
     InitializeParams,
     notification::{
@@ -19,15 +20,13 @@ use lsp_types::{
     ServerCapabilities,
     TextDocumentSyncCapability,
     TextDocumentSyncKind,
+    TextDocumentSyncOptions,
     Url,
     Diagnostic,
     Range,
     Position,
     DiagnosticSeverity,
     PublishDiagnosticsParams,
-    CompletionOptions,
-    OneOf,
-    HoverProviderCapability,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -41,17 +40,16 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let (connection, _io_threads) = Connection::listen(socket)?;
 
     let capabilities = ServerCapabilities {
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
-        completion_provider: Some(CompletionOptions::default()),
-        definition_provider: Some(OneOf::Left(true)),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        document_formatting_provider: Some(OneOf::Left(true)),
+        text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
+            open_close: Some(true),
+            change: Some(TextDocumentSyncKind::FULL),
+            ..Default::default()
+        })),
         ..Default::default()
     };
 
     let init_value= serde_json::json!({
         "capabilities": capabilities,
-        "offsetEncoding": ["utf-8"],
     });
 
     let init_params = connection.initialize(init_value)?;
@@ -123,6 +121,17 @@ fn handle_notification(
                         return Err(message.to_string())
                     }
                 } 
+            }
+        }
+
+        DidCloseTextDocument::METHOD => {
+            if let Ok(p) = serde_json::from_value::<DidCloseTextDocumentParams>(not.params.clone()) {
+                let uri= p.text_document.uri;
+                docs.remove(&uri);
+                if let Err(message) = publish_dummy_diag(conn, &uri) {
+                    return Err(message.to_string())
+                }
+
             }
         }
         _ => {}

@@ -18,6 +18,7 @@ If you don't use a second tab, run in background:
   cat /tmp/lsp_pipe | python -m minimal_lsp
 """
 
+import io
 import json
 import os
 import sys
@@ -25,7 +26,7 @@ import sys
 DEFAULT_PIPE = "/tmp/lsp_pipe"
 
 
-def send_body(fd: int, body: dict) -> None:
+def send_body(fd: io.BufferedWriter, body: dict) -> None:
     """Send a JSON-RPC packet with a Content-Length header over fd."""
     payload = json.dumps(body, separators=(",", ":"))
     header = f"Content-Length: {len(payload)}\r\n\r\n"

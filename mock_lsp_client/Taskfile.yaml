@@ -1,23 +1,18 @@
 version: "3"
 
-set: [set -e]
-
 vars:
-  PIPE:
-    sh: echo {{.LSP_PIPE | default "/tmp/lsp_pipe"}}
+  LSP_HOST:
+    sh: echo {{.LSP_HOST | default "127.0.0.1"}}
+  LSP_PORT:
+    sh: echo {{.LSP_PORT | default "9090"}}
 
 tasks:
   default:
-    desc: Send test packets to LSP server via FIFO
+    desc: Send test packets to LSP server via TCP
     cmds:
-      - uv run --no-project python main.py {{.PIPE}}
+      - uv run --no-project python main.py {{.LSP_HOST}} {{.LSP_PORT}}
 
   send:
-    desc: Send test packets to LSP server via FIFO with custom pipe path
+    desc: Send test packets to LSP server via TCP with custom host/port
     cmds:
-      - uv run --no-project python main.py {{.PIPE}}
-
-  setup-pipe:
-    desc: Create FIFO pipe for LSP communication
-    cmds:
-      - mkfifo -m 600 {{.PIPE}}
+      - uv run --no-project python main.py {{.LSP_HOST}} {{.LSP_PORT}}

@@ -4,3 +4,14 @@ includes:
   lsp:
     dir: minimal-lsp
     taskfile: ./minimal-lsp/Taskfile.yaml
+  mock-client:
+    dir: mock_lsp_client
+    taskfile: ./mock_lsp_client/Taskfile.yaml
+
+tasks:
+  run:
+    desc: Run the LSP with debug logging
+    vars:
+      RUST_LOG: debug
+    cmds:
+      - cargo run --manifest-path minimal-lsp/Cargo.toml

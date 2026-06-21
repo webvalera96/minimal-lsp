@@ -20,7 +20,7 @@ let client: LanguageClient;
 export function activate(context: vscode.ExtensionContext) {
 
 	const connectionInfo = {
-		host: '0.0.0.0',
+		host: '127.0.0.1',
 		port: 9090,
 	};
 
@@ -46,7 +46,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
-		documentSelector: [{ scheme: 'file', language: 'plaintext' }],
+		documentSelector: [{ scheme: 'file' }],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.clientrc')

@@ -1,12 +1,10 @@
 use std::error::Error;
 
 use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr, Ipv4Addr};
 
-
-use env_logger;
 
 use crossbeam_channel::{SendError};
-use log::{error};
 use lsp_server::{Connection, Message, Request as ServerRequest};
 use lsp_types::notification::Notification as _;
 use lsp_types::{
@@ -26,18 +24,28 @@ use lsp_types::{
     Range,
     Position,
     DiagnosticSeverity,
-    PublishDiagnosticsParams
+    PublishDiagnosticsParams,
+    CompletionOptions,
+    OneOf,
+    HoverProviderCapability,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
+
     env_logger::init();
 
-    error!("starting minimal-lsp");
-    let (connection, io_threads) = Connection::stdio();
-    error!("starting in stdio mode");
+    log::info!("starting minimal_lsp");
+
+    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9090); 
+
+    let (connection, _io_threads) = Connection::listen(socket)?;
 
     let capabilities = ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+        completion_provider: Some(CompletionOptions::default()),
+        definition_provider: Some(OneOf::Left(true)),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
         ..Default::default()
     };
 
@@ -48,8 +56,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let init_params = connection.initialize(init_value)?;
     main_loop(&connection, init_params)?;
-    io_threads.join()?;
-    eprintln!("shutting down minimal-lsp");
+    log::info!("shutting down lsp server");
     Ok(())
 }
 
@@ -68,14 +75,14 @@ fn main_loop(connection: &Connection, params: serde_json::Value) -> Result<(), B
 
                 handle_request(&req);
             }
+
             Message::Notification(not) => {
                 if let Err(err) = handle_notification(connection,&not, &mut docs) {
-                    error!("[lsp] notification {} failed: {err}", not.method.to_string())
+                    log::error!("[lsp] notification {} failed: {err}", not.method.to_string())
                 }
             }
-            Message::Response(resp) => {
-                error!("[lsp] response: {resp:?}")
-            }
+
+            Message::Response(resp) => log::error!("[lsp] response: {resp:?}")
         }
     }
     Ok(())
@@ -84,7 +91,7 @@ fn main_loop(connection: &Connection, params: serde_json::Value) -> Result<(), B
 fn handle_request(
     req: &ServerRequest,
 ) {
-    error!("[lsp] unsupported method: {}", req.method.as_str());
+    log::error!("[lsp] unsupported method: {}", req.method.as_str());
 }
 
 fn handle_notification(
@@ -95,7 +102,7 @@ fn handle_notification(
     match not.method.as_str() {
 
         DidOpenTextDocument::METHOD => {
-            error!("did open text document");
+            log::info!("did open text document");
 
             if let Ok(p) = serde_json::from_value::<DidOpenTextDocumentParams>(not.params.clone()) {
 

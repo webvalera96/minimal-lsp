@@ -1,7 +1,8 @@
 {
 	"compilerOptions": {
-		"types": ["node", "jest", "mocha"],
-		"module": "commonjs",
+		"moduleResolution": "nodenext",
+		"types": ["jest", "node",],
+		"module": "nodenext",
 		"target": "ES2024",
 		"outDir": "out",
 		"lib": [

@@ -22,9 +22,14 @@ def send_body(sock: socket.socket, body: dict) -> None:
     header = f"Content-Length: {len(payload)}\r\n\r\n"
     sock.sendall(header.encode("ascii"))
     sock.sendall(payload.encode("utf-8"))
+    response_bytes = sock.recv(1024)
+
+    response = response_bytes.decode('utf-8')
+    print(f"Received: {response}")
 
 
 def main() -> None:
+    print("test")
     host = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_HOST
     port = int(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_PORT
 
@@ -46,47 +51,11 @@ def main() -> None:
                 "method": "textDocument/didOpen",
                 "params": {
                     "textDocument": {
-                        "uri": "file:///tmp/foo.rs",
-                        "languageId": "rust",
+                        "uri": "file:///tmp/Dockerfile",
+                        "languageId": "Dockerfile",
                         "version": 1,
-                        "text": 'fn  main( ){println!("hi") }',
+                        "text": 'FROM scratch',
                     }
-                },
-            },
-            {
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "textDocument/completion",
-                "params": {
-                    "textDocument": {"uri": "file:///tmp/foo.rs"},
-                    "position": {"line": 0, "character": 0},
-                },
-            },
-            {
-                "jsonrpc": "2.0",
-                "id": 3,
-                "method": "textDocument/hover",
-                "params": {
-                    "textDocument": {"uri": "file:///tmp/foo.rs"},
-                    "position": {"line": 0, "character": 0},
-                },
-            },
-            {
-                "jsonrpc": "2.0",
-                "id": 4,
-                "method": "textDocument/definition",
-                "params": {
-                    "textDocument": {"uri": "file:///tmp/foo.rs"},
-                    "position": {"line": 0, "character": 0},
-                },
-            },
-            {
-                "jsonrpc": "2.0",
-                "id": 5,
-                "method": "textDocument/formatting",
-                "params": {
-                    "textDocument": {"uri": "file:///tmp/foo.rs"},
-                    "options": {"tabSize": 4, "insertSpaces": True},
                 },
             },
             {

@@ -48,9 +48,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
         ..Default::default()
     };
 
-    let init_value= serde_json::json!({
-        "capabilities": capabilities,
-    });
+    let init_value= serde_json::json!(capabilities);
 
     let init_params = connection.initialize(init_value)?;
     main_loop(&connection, init_params)?;

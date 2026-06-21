@@ -1,18 +1,32 @@
 use std::error::Error;
 use std::net::SocketAddr;
 
+use std::collections::HashMap;
+
+
 use env_logger;
 
+use crossbeam_channel::{SendError};
 use log::{debug, error, log_enabled, Level, info};
 use lsp_server::{Connection, Message, IoThreads};
 use lsp_types::notification::Notification as _;
 use lsp_types::{
     notification::{
-        DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
+        DidChangeTextDocument, 
+        DidOpenTextDocument,
+        PublishDiagnostics,
     },
-    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams, ServerCapabilities, TextDocumentSyncCapability,
+    DidChangeTextDocumentParams,
+    DidOpenTextDocumentParams,
+    ServerCapabilities,
+    TextDocumentSyncCapability,
     TextDocumentSyncKind,
+    Url,
+    Diagnostic,
+    Range,
+    Position,
+    DiagnosticSeverity,
+    PublishDiagnosticsParams
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -50,57 +64,82 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 }
 
 fn main_loop(connection: &Connection) -> Result<(), Box<dyn Error + Sync + Send>> {
+
+    // store documents from editor for processing
+    let mut docs: HashMap<Url, String> = HashMap::new();
+
     for msg in &connection.receiver {
         match msg {
             Message::Request(req) => {
                 if connection.handle_shutdown(&req)? {
                     break;
                 }
-                eprintln!("[lsp] unhandled request: {}", req.method);
             }
             Message::Notification(not) => {
-                handle_notification(not);
+                if let Err(err) = handle_notification(connection,&not, &mut docs) {
+                    error!("[lsp] notification {} failed: {err}", not.method.to_string())
+                }
             }
             Message::Response(resp) => {
-                eprintln!("[lsp] response: {resp:?}");
+                error!("[lsp] response: {resp:?}")
             }
         }
     }
     Ok(())
 }
 
-fn handle_notification(not: lsp_server::Notification) {
+fn handle_notification(
+    conn: &Connection,
+    not: &lsp_server::Notification,
+    docs: &mut HashMap<Url, String>,
+) -> Result<(), String>{
     match not.method.as_str() {
+
         DidOpenTextDocument::METHOD => {
-            if let Ok(params) = serde_json::from_value::<DidOpenTextDocumentParams>(not.params) {
-                eprintln!(
-                    "[lsp] didOpen: uri={}, language={}, version={}",
-                    params.text_document.uri,
-                    params.text_document.language_id,
-                    params.text_document.version,
-                );
+
+            if let Ok(p) = serde_json::from_value::<DidOpenTextDocumentParams>(not.params.clone()) {
+
+                let uri = p.text_document.uri;
+                docs.insert(uri.clone(), p.text_document.text);
+                if let Err(message) = publish_dummy_diag(conn, &uri) {
+                    return Err(message.to_string())
+                }
             }
         }
+
         DidChangeTextDocument::METHOD => {
-            if let Ok(params) = serde_json::from_value::<DidChangeTextDocumentParams>(not.params) {
-                eprintln!(
-                    "[lsp] didChange: uri={}, version={}",
-                    params.text_document.uri, params.text_document.version,
-                );
+            if let Ok(p) = serde_json::from_value::<DidChangeTextDocumentParams>(not.params.clone()) {
+                if let Some(change) = p.content_changes.into_iter().next() {
+                    let uri = p.text_document.uri;
+                    docs.insert(uri.clone(), change.text);
+                    if let Err(message) = publish_dummy_diag(conn, &uri) {
+                        return Err(message.to_string())
+                    }
+                } 
             }
         }
-        DidSaveTextDocument::METHOD => {
-            if let Ok(params) = serde_json::from_value::<DidSaveTextDocumentParams>(not.params) {
-                eprintln!("[lsp] didSave: uri={}", params.text_document.uri);
-            }
-        }
-        DidCloseTextDocument::METHOD => {
-            if let Ok(params) = serde_json::from_value::<DidCloseTextDocumentParams>(not.params) {
-                eprintln!("[lsp] didClose: uri={}", params.text_document.uri);
-            }
-        }
-        _ => {
-            eprintln!("[lsp] unhandled notification: {}", not.method);
-        }
+        _ => {}
     }
+    Ok(())
+}
+
+fn publish_dummy_diag(conn: &Connection, uri: &Url) -> Result<(),SendError<Message>> {
+    let diag = Diagnostic {
+        range: Range::new(Position::new(0, 0), Position::new(0, 1)),
+        severity: Some(DiagnosticSeverity::INFORMATION),
+        code: None,
+        code_description: None,
+        source: Some("minimal_lsp".into()),
+        message: "dummy diagnostic".into(),
+        related_information: None,
+        tags: None,
+        data: None,
+    };
+    let params =
+        PublishDiagnosticsParams { uri: uri.clone(), diagnostics: vec![diag], version: None };
+    conn.sender.send(Message::Notification(lsp_server::Notification::new(
+        PublishDiagnostics::METHOD.to_owned(),
+        params,
+    )))?;
+    Ok(())
 }

@@ -18,7 +18,7 @@
 			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
-			"name": "Run LSP Client",
+			"name": "Run LSP Client (mock)",
 			"type": "debugpy",
 			"request": "launch",
 			"program": "${workspaceFolder}/mock_lsp_client/main.py",
@@ -28,14 +28,16 @@
 			"name": "Run LSP Server",
 			"type": "lldb",
 			"request": "launch",
-			"program": "${workspaceFolder}/minimal-lsp/target/debug/minimal-lsp",
 			"args": [],
-			"cwd": "${workspaceFolder}",
-			"env": {
-				"RUST_LOG": "debug"
-			},
 			"console": "integratedTerminal",
-			"preLaunchTask": "cargo: build"
+			"cargo": {
+				"args": ["run"],
+				"env": {
+					"RUST_LOG": "debug"
+				},
+				"cwd": "${workspaceFolder}/minimal-lsp",
+				"problemMatcher": "$rustc",
+			}
 		}
 	],
 }

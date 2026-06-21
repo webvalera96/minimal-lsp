@@ -1,5 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import * as net from 'net';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { workspace, ExtensionContext, window as Window } from 'vscode';
@@ -8,7 +9,8 @@ import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind
+	TransportKind,
+	StreamInfo,
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
@@ -17,6 +19,11 @@ let client: LanguageClient;
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
+	const connectionInfo = {
+		host: '127.0.0.1',
+		port: 9090,
+	};
+
 	const releaseServerModule = context.asAbsolutePath(
 		path.join('minimal-lsp', 'target', 'release', 'minimal-lsp')
 	);
@@ -24,18 +31,37 @@ export function activate(context: vscode.ExtensionContext) {
 	const debugServerModule = context.asAbsolutePath(
 		path.join('minimal-lsp', 'target', 'debug', 'minimal-lsp')
 	);
-		// If the extension is launched in debug mode then the debug server options are used
-	// Otherwise the run options are used
-	const serverOptions: ServerOptions = {
-		run: { 
-			command: releaseServerModule,
-			args: ['--stdio'],
-		},
-		debug: {
-			command: debugServerModule,
-			args: ['--stdio', '--debug'],
-		}
+
+	const serverOptions: ServerOptions = () => {
+		return new Promise<StreamInfo>((resolve,reject) => {
+			const clientSocket = new net.Socket();
+
+			clientSocket.connect(connectionInfo.port, connectionInfo.host, () => {
+				resolve({
+					reader: clientSocket,
+					writer: clientSocket,
+				});
+			});
+
+			clientSocket.on('error', (err) => {
+				reject(err);
+			});
+		});
 	};
+
+	// TODO: option to start in debug mode or release mode
+	// If the extension is launched in debug mode then the debug server options are used
+	// Otherwise the run options are used
+	// const serverOptions: ServerOptions = {
+	// 	run: { 
+	// 		command: releaseServerModule,
+	// 		args: ['--stdio'],
+	// 	},
+	// 	debug: {
+	// 		command: debugServerModule,
+	// 		args: ['--stdio', '--debug'],
+	// 	}
+	// };
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {

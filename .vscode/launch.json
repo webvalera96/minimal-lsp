@@ -16,6 +16,13 @@
 				"${workspaceFolder}/out/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
+		},
+		{
+			"name": "Run LSP Client",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${workspaceFolder}/mock_lsp_client/main.py",
+			"console": "integratedTerminal"
 		}
-	]
+	],
 }

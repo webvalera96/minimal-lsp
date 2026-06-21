@@ -1,18 +1,37 @@
 use std::error::Error;
+use std::net::SocketAddr;
 
-use lsp_server::{Connection, Message};
+use env_logger;
+
+use log::{debug, error, log_enabled, Level, info};
+use lsp_server::{Connection, Message, IoThreads};
 use lsp_types::notification::Notification as _;
 use lsp_types::{
+    notification::{
+        DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
+    },
     DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind,
-    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument},
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
-    eprintln!("starting minimal-lsp");
+    env_logger::init();
 
-    let (connection, io_threads) = Connection::stdio();
+    debug!("starting minimal-lsp");
+
+    let connection: Connection;
+    let io_threads: IoThreads;
+
+    // in release mod, work in stdio
+    if log_enabled!(Level::Debug) {
+        debug!("starting in listen mode");
+        let addr: SocketAddr = "127.0.0.1:9090".parse()?;
+        (connection, io_threads) = Connection::listen(addr)?;
+    } else { // in debug mode, work as server
+        (connection, io_threads) = Connection::stdio();
+        info!("starting in stdio mode");
+    }
 
     let capabilities = ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),

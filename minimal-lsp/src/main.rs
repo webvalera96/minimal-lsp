@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::net::SocketAddr;
 
 use std::collections::HashMap;
 
@@ -7,10 +6,11 @@ use std::collections::HashMap;
 use env_logger;
 
 use crossbeam_channel::{SendError};
-use log::{debug, error, log_enabled, Level, info};
-use lsp_server::{Connection, Message, IoThreads};
+use log::{error};
+use lsp_server::{Connection, Message, Request as ServerRequest};
 use lsp_types::notification::Notification as _;
 use lsp_types::{
+    InitializeParams,
     notification::{
         DidChangeTextDocument, 
         DidOpenTextDocument,
@@ -32,38 +32,29 @@ use lsp_types::{
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     env_logger::init();
 
-    debug!("starting minimal-lsp");
-
-    let connection: Connection;
-    let io_threads: IoThreads;
-
-    // in release mod, work in stdio
-    if log_enabled!(Level::Debug) {
-        debug!("starting in listen mode");
-        let addr: SocketAddr = "127.0.0.1:9090".parse()?;
-        (connection, io_threads) = Connection::listen(addr)?;
-    } else { // in debug mode, work as server
-        (connection, io_threads) = Connection::stdio();
-        info!("starting in stdio mode");
-    }
+    error!("starting minimal-lsp");
+    let (connection, io_threads) = Connection::stdio();
+    error!("starting in stdio mode");
 
     let capabilities = ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         ..Default::default()
     };
 
-    let init_result = serde_json::json!({
+    let init_value= serde_json::json!({
         "capabilities": capabilities,
+        "offsetEncoding": ["utf-8"],
     });
 
-    let _init_params = connection.initialize(init_result)?;
-    main_loop(&connection)?;
+    let init_params = connection.initialize(init_value)?;
+    main_loop(&connection, init_params)?;
     io_threads.join()?;
     eprintln!("shutting down minimal-lsp");
     Ok(())
 }
 
-fn main_loop(connection: &Connection) -> Result<(), Box<dyn Error + Sync + Send>> {
+fn main_loop(connection: &Connection, params: serde_json::Value) -> Result<(), Box<dyn Error + Sync + Send>> {
+    let _init: InitializeParams = serde_json::from_value(params)?;
 
     // store documents from editor for processing
     let mut docs: HashMap<Url, String> = HashMap::new();
@@ -74,6 +65,8 @@ fn main_loop(connection: &Connection) -> Result<(), Box<dyn Error + Sync + Send>
                 if connection.handle_shutdown(&req)? {
                     break;
                 }
+
+                handle_request(&req);
             }
             Message::Notification(not) => {
                 if let Err(err) = handle_notification(connection,&not, &mut docs) {
@@ -88,6 +81,12 @@ fn main_loop(connection: &Connection) -> Result<(), Box<dyn Error + Sync + Send>
     Ok(())
 }
 
+fn handle_request(
+    req: &ServerRequest,
+) {
+    error!("[lsp] unsupported method: {}", req.method.as_str());
+}
+
 fn handle_notification(
     conn: &Connection,
     not: &lsp_server::Notification,
@@ -96,6 +95,7 @@ fn handle_notification(
     match not.method.as_str() {
 
         DidOpenTextDocument::METHOD => {
+            error!("did open text document");
 
             if let Ok(p) = serde_json::from_value::<DidOpenTextDocumentParams>(not.params.clone()) {
 
